@@ -1,0 +1,109 @@
+ATTEMPT 1:
+
+SELECT
+	SUM(
+	(
+	SELECT SUM(sa.price)
+	FROM `Sales` sa
+	WHERE sa.sales_date > $P{dateafter} AND sa.sales_date < $P{datebefore}
+	GROUP BY sa.receipt_no
+	)
+	+
+	(
+	SELECT (SUM(sd.price) * 0.1) * 2 -
+		(
+		SELECT CASE WHEN sb.cc_disc_percent IS NOT NULL THEN sb.cc_disc_percent*SUM(sb.price) ELSE 0 END
+		FROM `Sales` sb
+		WHERE sb.sales_date > $P{dateafter} AND sb.sales_date < $P{datebefore}
+		GROUP BY sb.receipt_no
+		)
+		-
+		(
+		SELECT CASE WHEN sc.event_disc_percent IS NOT NULL THEN sc.event_disc_percent*SUM(sc.price) ELSE 0 END AS
+		FROM `Sales` sc
+		WHERE sc.sales_date > $P{dateafter} AND sc.sales_date < $P{datebefore}
+		GROUP BY sc.receipt_no
+		)
+	FROM `Sales` sd
+	WHERE sd.sales_date > $P{dateafter} AND sd.sales_date < $P{datebefore}
+	GROUP BY sd.receipt_no
+	)
+	) AS 'TOTAL',
+	month(`Sales_Date`),
+	day(`Sales_Date`)
+FROM `Sales` se
+WHERE se.sales_date > $P{dateafter} AND se.sales_date < $P{datebefore}
+GROUP BY se.sales_date
+
+_____________________________________________________________________________________________
+ATTEMPT 2:
+
+SELECT
+	SUM(
+	(
+	SELECT SUM(sa.price)
+	FROM `Sales` sa
+	WHERE sa.sales_date > $P{dateafter} AND sa.sales_date < $P{datebefore}
+	GROUP BY sa.receipt_no
+	)
+	+
+	(
+	SELECT (SUM(sd.price) * 0.1) * 2
+		- (CASE WHEN sd.cc_disc_percent IS NOT NULL THEN sd.cc_disc_percent*SUM(sd.price) ELSE 0 END)
+		- (CASE WHEN sd.event_disc_percent IS NOT NULL THEN sd.event_disc_percent*SUM(sd.price) ELSE 0 END)
+	FROM `Sales` sd
+	WHERE sd.sales_date > $P{dateafter} AND sd.sales_date < $P{datebefore}
+	GROUP BY sd.receipt_no
+	)
+	) AS 'TOTAL',
+	month(`Sales_Date`),
+	day(`Sales_Date`)
+FROM `Sales` se
+WHERE se.sales_date > $P{dateafter} AND se.sales_date < $P{datebefore}
+GROUP BY se.sales_date
+
+_____________________________________________________________________________________________
+ATTEMPT 3:
+
+SELECT
+	SUM(
+	(
+	SELECT
+		(
+		SUM(sd.price) + ((SUM(sd.price) * 0.1) * 2)
+		- (CASE WHEN sd.cc_disc_percent IS NOT NULL THEN sd.cc_disc_percent*SUM(sd.price) ELSE 0 END)
+		- (CASE WHEN sd.event_disc_percent IS NOT NULL THEN sd.event_disc_percent*SUM(sd.price) ELSE 0 END)
+		) AS 'subTotal'
+	FROM `Sales` sd
+	WHERE sd.sales_date > $P{dateafter} AND sd.sales_date < $P{datebefore}
+	GROUP BY sd.receipt_no
+	)
+	) AS 'TOTAL',
+	month(`Sales_Date`),
+	day(`Sales_Date`)
+FROM `Sales` se
+WHERE se.sales_date > $P{dateafter} AND se.sales_date < $P{datebefore}
+GROUP BY se.sales_date
+
+_____________________________________________________________________________________________
+ATTEMPT 4:
+
+SELECT
+	SUM(
+	(
+	SELECT
+		(
+		SUM(sd.price) + ((SUM(sd.price) * 0.1) * 2)
+		- (CASE WHEN sd.cc_disc_percent IS NOT NULL THEN sd.cc_disc_percent*(SUM(sd.price) + ((SUM(sd.price) * 0.1) * 2))ELSE 0 END)
+		- (CASE WHEN sd.event_disc_percent IS NOT NULL THEN sd.event_disc_percent*(SUM(sd.price) + ((SUM(sd.price) * 0.1) * 2)) ELSE 0 END)
+		) AS 'subTotal'
+	FROM `Sales` sd
+	WHERE sd.sales_date > '2014-01-01' AND sd.sales_date < '2014-06-13'
+	GROUP BY sd.receipt_no
+	)
+	) AS 'TOTAL',
+	month(`Sales_Date`),
+	day(`Sales_Date`)
+FROM `Sales` se
+WHERE se.sales_date > '2014-01-01' AND se.sales_date < '2014-06-13'
+GROUP BY se.sales_date
